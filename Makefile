@@ -13,12 +13,12 @@
 # limitations under the License.
 
 TARGET = eventrouter
-GOTARGET = github.com/heptiolabs/$(TARGET)
+GOTARGET = github.com/mwennrich/$(TARGET)
 BUILDMNT = /src/
 REGISTRY ?= gcr.io/heptio-images
 VERSION ?= v0.3
 IMAGE = $(REGISTRY)/$(BIN)
-BUILD_IMAGE ?= golang:1.12.9
+BUILD_IMAGE ?= golang:1.16.3
 DOCKER ?= docker
 DIR := ${CURDIR}
 

@@ -20,7 +20,7 @@ import (
 	"fmt"
 
 	"github.com/golang/glog"
-	"github.com/heptiolabs/eventrouter/sinks"
+	"github.com/mwennrich/eventrouter/sinks"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/viper"
 

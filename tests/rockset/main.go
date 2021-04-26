@@ -15,7 +15,7 @@ package main
 
 import (
 	"fmt"
-	"github.com/heptiolabs/eventrouter/sinks"
+	"github.com/mwennrich/eventrouter/sinks"
 	"time"
 
 	v1 "k8s.io/api/core/v1"
