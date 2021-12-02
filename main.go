@@ -78,7 +78,10 @@ func loadConfig() kubernetes.Interface {
 		panic(err.Error())
 	}
 
-	viper.BindEnv("kubeconfig") // Allows the KUBECONFIG env var to override where the kubeconfig is
+	err =viper.BindEnv("kubeconfig") // Allows the KUBECONFIG env var to override where the kubeconfig is
+	if err != nil {
+		return nil
+	}
 
 	// Allow specifying a custom config file via the EVENTROUTER_CONFIG env var
 	if forceCfg := os.Getenv("EVENTROUTER_CONFIG"); forceCfg != "" {
