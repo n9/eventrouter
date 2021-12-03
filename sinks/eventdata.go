@@ -63,7 +63,7 @@ func (e *EventData) WriteRFC5424(w io.Writer) (int64, error) {
 	var eJSONBytes []byte
 	var err error
 	if eJSONBytes, err = json.Marshal(e); err != nil {
-		return 0, fmt.Errorf("failed to json serialize event: %v", err)
+		return 0, fmt.Errorf("failed to json serialize event: %w", err)
 	}
 
 	// Each message should look like an RFC5424 syslog message:
@@ -94,12 +94,12 @@ func (e *EventData) WriteFlattenedJSON(w io.Writer) (int64, error) {
 	var err error
 	extra.SetNamingStrategy(extra.LowerCaseWithUnderscores)
 	if eJSONBytes, err = jsoniter.Marshal(e); err != nil {
-		return 0, fmt.Errorf("failed to json serialize event: %v", err)
+		return 0, fmt.Errorf("failed to json serialize event: %w", err)
 	}
 
 	result, err := gojsonexplode.Explodejsonstr(string(eJSONBytes), "_")
 	if err != nil {
-		return 0, fmt.Errorf("failed to flatten json: %v", err)
+		return 0, fmt.Errorf("failed to flatten json: %w", err)
 	}
 
 	written, err := w.Write([]byte(result))

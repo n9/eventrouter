@@ -1,60 +1,21 @@
-# Copyright 2017 Heptio Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+GO111MODULE := on
+DOCKER_TAG := $(or ${GIT_TAG_NAME}, latest)
 
-TARGET = eventrouter
-GOTARGET = github.com/mwennrich/$(TARGET)
-BUILDMNT = /src/
-REGISTRY ?= gcr.io/heptio-images
-VERSION ?= v0.3
-IMAGE = $(REGISTRY)/$(BIN)
-BUILD_IMAGE ?= golang:1.16.3
-DOCKER ?= docker
-DIR := ${CURDIR}
+all: eventrouter
 
-ifneq ($(VERBOSE),)
-VERBOSE_FLAG = -v
-endif
-TESTARGS ?= $(VERBOSE_FLAG) -timeout 60s
-TEST_PKGS ?= $(GOTARGET)/sinks/...
-TEST = go test $(TEST_PKGS) $(TESTARGS)
-VET_PKGS ?= $(GOTARGET)/...
-VET = go vet $(VET_PKGS)
+.PHONY: eventrouter
+eventrouter:
+	go build -tags netgo -o bin/eventrouter *.go
+	strip bin/eventrouter
 
-DOCKER_BUILD ?= $(DOCKER) run --rm -v $(DIR):$(BUILDMNT) -w $(BUILDMNT) $(BUILD_IMAGE) /bin/sh -c
+.PHONY: dockerimages
+dockerimages:
+	docker build -t mwennrich/eventrouter:${DOCKER_TAG} .
 
-all: container
+.PHONY: dockerpush
+dockerpush:
+	docker push mwennrich/eventrouter:${DOCKER_TAG}
 
-container:
-	$(DOCKER_BUILD) 'CGO_ENABLED=0 go build'
-	$(DOCKER) build -t $(REGISTRY)/$(TARGET):latest -t $(REGISTRY)/$(TARGET):$(VERSION) .
-
-push:
-	$(DOCKER) push $(REGISTRY)/$(TARGET):latest
-	if git describe --tags --exact-match >/dev/null 2>&1; \
-	then \
-		$(DOCKER) push $(REGISTRY)/$(TARGET):$(VERSION); \
-	fi
-
-test:
-	$(DOCKER_BUILD) '$(TEST)'
-
-vet:
-	$(DOCKER_BUILD) '$(VET)'
-
-.PHONY: all local container push
-
+.PHONY: clean
 clean:
-	rm -f $(TARGET)
-	$(DOCKER) rmi $(REGISTRY)/$(TARGET):latest
-	$(DOCKER) rmi $(REGISTRY)/$(TARGET):$(VERSION)
+	rm -f bin/*
