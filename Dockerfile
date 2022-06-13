@@ -5,7 +5,7 @@ COPY / /work
 WORKDIR /work
 RUN make eventrouter
 
-FROM alpine:3.15
+FROM alpine:3.16
 COPY --from=builder /work/bin/eventrouter /eventrouter
 USER root
 ENTRYPOINT ["/eventrouter"]
