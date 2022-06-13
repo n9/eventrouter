@@ -1,6 +1,6 @@
 # Eventrouter
 
-Extremely simplified fork of https://github.com/heptiolabs/eventrouter
+Extremely simplified fork of <https://github.com/heptiolabs/eventrouter>
 
 Contains only the stdout sink
 
