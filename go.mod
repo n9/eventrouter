@@ -1,6 +1,6 @@
 module github.com/mwennrich/eventrouter
 
-go 1.17
+go 1.18
 
 require (
 	github.com/crewjam/rfc5424 v0.1.0
