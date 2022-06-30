@@ -9,13 +9,13 @@ Contains only the stdout sink
 Startup:
 
 ```bash
-kubectl create -f https://raw.githubusercontent.com/mwennrich/eventrouter/master/yaml/eventrouter.yaml
+kubectl create -f https://raw.githubusercontent.com/mwennrich/eventrouter/main/yaml/eventrouter.yaml
 ```
 
 Teardown:
 
 ```bash
-kubectl delete -f https://raw.githubusercontent.com/mwennrich/eventrouter/master/yaml/eventrouter.yaml
+kubectl delete -f https://raw.githubusercontent.com/mwennrich/eventrouter/main/yaml/eventrouter.yaml
 ```
 
 ### Inspecting the output
