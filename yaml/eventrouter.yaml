@@ -74,6 +74,11 @@ spec:
           volumeMounts:
             - name: config-volume
               mountPath: /etc/eventrouter
+          securityContext:
+            runAsUser: 1000
+            allowPrivilegeEscalation: false
+            runAsNonRoot: true
+
       serviceAccount: eventrouter
       volumes:
         - name: config-volume
