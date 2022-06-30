@@ -78,7 +78,7 @@ func loadConfig() kubernetes.Interface {
 		panic(err.Error())
 	}
 
-	err =viper.BindEnv("kubeconfig") // Allows the KUBECONFIG env var to override where the kubeconfig is
+	err = viper.BindEnv("kubeconfig") // Allows the KUBECONFIG env var to override where the kubeconfig is
 	if err != nil {
 		return nil
 	}
@@ -108,6 +108,8 @@ func loadConfig() kubernetes.Interface {
 // main entry point of the program
 func main() {
 	var wg sync.WaitGroup
+
+	flag.Set("logtostderr", "true")
 
 	clientset := loadConfig()
 	sharedInformers := informers.NewSharedInformerFactory(clientset, viper.GetDuration("resync-interval"))

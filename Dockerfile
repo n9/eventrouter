@@ -1,13 +1,13 @@
 
-FROM golang:1.18-alpine as builder
-RUN apk add make binutils
+FROM golang:1.18 as builder
+ENV GO111MODULE=on
+ENV CGO_ENABLED=0
+
 COPY / /work
 WORKDIR /work
 RUN make eventrouter
 
-FROM alpine:3.16
+FROM scratch
 COPY --from=builder /work/bin/eventrouter /eventrouter
-USER root
+USER 1000
 ENTRYPOINT ["/eventrouter"]
-
-EXPOSE 9080
