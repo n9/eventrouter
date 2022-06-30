@@ -109,7 +109,10 @@ func loadConfig() kubernetes.Interface {
 func main() {
 	var wg sync.WaitGroup
 
-	flag.Set("logtostderr", "true")
+	err:=flag.Set("logtostderr", "true")
+	if err != nil {
+		panic(err.Error())
+	}
 
 	clientset := loadConfig()
 	sharedInformers := informers.NewSharedInformerFactory(clientset, viper.GetDuration("resync-interval"))
