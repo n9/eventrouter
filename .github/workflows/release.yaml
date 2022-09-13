@@ -19,9 +19,9 @@ jobs:
           password: ${{ secrets.DOCKER_REGISTRY_TOKEN }}
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v2
+        uses: golangci/golangci-lint-action@v3
         with:
-          version: v1.45.0
+          version: v1.49.0
           args: --timeout=3m -p bugs -p unused
 
       - name: Build the Docker images
