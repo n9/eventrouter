@@ -109,7 +109,7 @@ func loadConfig() kubernetes.Interface {
 func main() {
 	var wg sync.WaitGroup
 
-	err:=flag.Set("logtostderr", "true")
+	err := flag.Set("logtostderr", "true")
 	if err != nil {
 		panic(err.Error())
 	}
@@ -127,7 +127,11 @@ func main() {
 		go func() {
 			glog.Info("Starting prometheus metrics.")
 			http.Handle("/metrics", promhttp.Handler())
-			glog.Warning(http.ListenAndServe(*addr, nil))
+			server := &http.Server{
+				Addr:              *addr,
+				ReadHeaderTimeout: 3 * time.Second,
+			}
+			glog.Warning(server.ListenAndServe())
 		}()
 	}
 
