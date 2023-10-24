@@ -17,10 +17,6 @@ limitations under the License.
 package sinks
 
 import (
-	"errors"
-
-	"github.com/golang/glog"
-	"github.com/spf13/viper"
 	v1 "k8s.io/api/core/v1"
 )
 
@@ -32,17 +28,5 @@ type EventSinkInterface interface {
 // ManufactureSink will manufacture a sink according to viper configs
 // TODO: Determine if it should return an array of sinks
 func ManufactureSink() (e EventSinkInterface) {
-	s := viper.GetString("sink")
-	glog.Infof("Sink is [%v]", s)
-	switch s {
-	case "stdout":
-		viper.SetDefault("stdoutJSONNamespace", "")
-		stdoutNamespace := viper.GetString("stdoutJSONNamespace")
-		e = NewStdoutSink(stdoutNamespace)
-	// case "logfile"
-	default:
-		err := errors.New("invalid sink specified")
-		panic(err.Error())
-	}
-	return e
+	return NewStdoutSink()
 }

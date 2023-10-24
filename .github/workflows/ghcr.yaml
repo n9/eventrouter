@@ -1,12 +1,7 @@
 ---
 name: Docker Build Action
 on:
-  pull_request:
-    branches:
-      - main
-  release:
-    types:
-      - published
+  workflow_dispatch:
   push:
     branches:
       - main
@@ -14,6 +9,7 @@ on:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
+  GOLANG_VERSION: 1.21
 
 jobs:
   build:
@@ -22,19 +18,19 @@ jobs:
 
     steps:
     - name: Log in to the container registry
-      uses: docker/login-action@v2
+      uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
     - name: Checkout
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4
 
     - name: Set up Go
-      uses: actions/setup-go@v3
+      uses: actions/setup-go@v4
       with:
-        go-version: '1.21.x'
+        go-version: ${{ env.GOLANG_VERSION }}
 
     - name: Lint
       uses: golangci/golangci-lint-action@v3
@@ -43,13 +39,13 @@ jobs:
 
     - name: Make tag
       run: |
-        [ "${GITHUB_EVENT_NAME}" == 'pull_request' ] && echo "tag=${GITHUB_HEAD_REF##*/}" >> $GITHUB_ENV || true
-        [ "${GITHUB_EVENT_NAME}" == 'release' ] && echo "tag=${GITHUB_REF##*/}" >> $GITHUB_ENV || true
-        [ "${GITHUB_EVENT_NAME}" == 'push' ] && echo "tag=latest" >> $GITHUB_ENV || true
+        echo "tag=latest" >> $GITHUB_ENV
 
     - name: Build and push image
-      uses: docker/build-push-action@v3
+      uses: docker/build-push-action@v5
       with:
         context: .
+        build-args: |
+          GOLANG_VERSION=${{ env.GOLANG_VERSION }}
         push: true
         tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ env.tag }}

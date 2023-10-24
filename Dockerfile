@@ -1,5 +1,6 @@
+ARG GOLANG_VERSION
 
-FROM golang:1.21 as builder
+FROM golang:${GOLANG_VERSION} as builder
 ENV GO111MODULE=on
 ENV CGO_ENABLED=0
 

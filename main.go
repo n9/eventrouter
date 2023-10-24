@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"net/http"
 	"os"
 	"os/signal"
@@ -25,9 +26,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/golang/glog"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/spf13/viper"
+	"github.com/spf13/cast"
+	klog "k8s.io/klog/v2"
 
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -35,8 +36,12 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 )
 
-// addr tells us what address to have the Prometheus metrics listen on.
-var addr = flag.String("listen-address", ":8080", "The address to listen on for HTTP requests.")
+var resyncInterval = flag.Duration("resync-interval", 3*time.Minute, "K8S resync interval")
+
+var isMetricsEnabled = flag.Bool("metrics-enabled", true, "Enabled metrics.")
+var metricsListenAddress = flag.String("metrics-listen-address", ":9090", "The address to listen on for metrics.")
+
+var positionFilePath = flag.String("position-file-path", "", "Path to position path.")
 
 // setup a signal hander to gracefully exit
 func sigHandler() <-chan struct{} {
@@ -51,7 +56,7 @@ func sigHandler() <-chan struct{} {
 			syscall.SIGILL,  // illegal instruction
 			syscall.SIGFPE)  // floating point - this is why we can't have nice things
 		sig := <-c
-		glog.Warningf("Signal (%v) Detected, Shutting Down", sig)
+		klog.Warningf("Signal (%v) Detected, Shutting Down", sig)
 		close(stop)
 	}()
 	return stop
@@ -64,30 +69,7 @@ func loadConfig() kubernetes.Interface {
 
 	flag.Parse()
 
-	// leverages a file|(ConfigMap)
-	// to be located at /etc/eventrouter/config
-	viper.SetConfigType("json")
-	viper.SetConfigName("config")
-	viper.AddConfigPath("/etc/eventrouter/")
-	viper.AddConfigPath(".")
-	viper.SetDefault("kubeconfig", "")
-	viper.SetDefault("sink", "glog")
-	viper.SetDefault("resync-interval", time.Minute*30)
-	viper.SetDefault("enable-prometheus", true)
-	if err = viper.ReadInConfig(); err != nil {
-		panic(err.Error())
-	}
-
-	err = viper.BindEnv("kubeconfig") // Allows the KUBECONFIG env var to override where the kubeconfig is
-	if err != nil {
-		return nil
-	}
-
-	// Allow specifying a custom config file via the EVENTROUTER_CONFIG env var
-	if forceCfg := os.Getenv("EVENTROUTER_CONFIG"); forceCfg != "" {
-		viper.SetConfigFile(forceCfg)
-	}
-	kubeconfig := viper.GetString("kubeconfig")
+	kubeconfig := os.Getenv("KUBECONFIG")
 	if len(kubeconfig) > 0 {
 		config, err = clientcmd.BuildConfigFromFlags("", kubeconfig)
 	} else {
@@ -109,29 +91,64 @@ func loadConfig() kubernetes.Interface {
 func main() {
 	var wg sync.WaitGroup
 
+	klog.InitFlags(nil)
+
 	err := flag.Set("logtostderr", "true")
 	if err != nil {
 		panic(err.Error())
 	}
 
 	clientset := loadConfig()
-	sharedInformers := informers.NewSharedInformerFactory(clientset, viper.GetDuration("resync-interval"))
+
+	var lastResourceVersionPosition string
+	var mostRecentResourceVersion *string
+
+	resourceVersionPositionPath := *positionFilePath
+	resourceVersionPositionFunc := func(resourceVersion string) {
+		if resourceVersionPositionPath != "" {
+			if cast.ToInt(resourceVersion) > cast.ToInt(mostRecentResourceVersion) {
+				err := os.WriteFile(resourceVersionPositionPath, []byte(resourceVersion), 0600)
+				if err != nil {
+					klog.Errorf("failed to write lastResourceVersionPosition")
+				} else {
+					mostRecentResourceVersion = &resourceVersion
+				}
+			}
+		}
+	}
+
+	if resourceVersionPositionPath != "" {
+		_, err := os.Stat(resourceVersionPositionPath)
+		if !os.IsNotExist(err) {
+			resourceVersionBytes, err := os.ReadFile(resourceVersionPositionPath)
+			if err != nil {
+				klog.Errorf("failed to read resource version bookmark from %s", resourceVersionPositionPath)
+			} else {
+				lastResourceVersionPosition = string(resourceVersionBytes)
+			}
+		}
+	}
+
+	sharedInformers := informers.NewSharedInformerFactory(clientset, *resyncInterval)
 	eventsInformer := sharedInformers.Core().V1().Events()
 
 	// TODO: Support locking for HA https://github.com/kubernetes/kubernetes/pull/42666
-	eventRouter := NewEventRouter(clientset, eventsInformer)
+	eventRouter := NewEventRouter(clientset, eventsInformer, lastResourceVersionPosition, resourceVersionPositionFunc, *isMetricsEnabled)
 	stop := sigHandler()
 
 	// Startup the http listener for Prometheus Metrics endpoint.
-	if viper.GetBool("enable-prometheus") {
+	if *isMetricsEnabled {
 		go func() {
-			glog.Info("Starting prometheus metrics.")
+			klog.Infof("Starting metrics enpoint at %s.", *metricsListenAddress)
+			http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+				fmt.Fprintf(w, "OK")
+			})
 			http.Handle("/metrics", promhttp.Handler())
 			server := &http.Server{
-				Addr:              *addr,
+				Addr:              *metricsListenAddress,
 				ReadHeaderTimeout: 3 * time.Second,
 			}
-			glog.Warning(server.ListenAndServe())
+			klog.Warning(server.ListenAndServe())
 		}()
 	}
 
@@ -143,9 +160,9 @@ func main() {
 	}()
 
 	// Startup the Informer(s)
-	glog.Infof("Starting shared Informer(s)")
+	klog.Infof("Starting shared Informer(s)")
 	sharedInformers.Start(stop)
 	wg.Wait()
-	glog.Warningf("Exiting main()")
+	klog.Warningf("Exiting main()")
 	os.Exit(1)
 }
